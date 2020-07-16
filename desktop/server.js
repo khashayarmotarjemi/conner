@@ -1,82 +1,83 @@
+const redux = require('redux');
+const shell = require('shelljs');
 const Net = require('net');
 const port = 8991;
-import { createStore } from 'redux'
+let passphrase = '1234';
 
-
-// Use net.createServer() in your code. This is just for illustration purpose.
-// Create a new TCP server.
-const server = new Net.Server();
-server.listen(port, function () {
+const server = Net.createServer().listen(port, function () {
     console.log(`Server listening for connection requests on socket localhost:${port}`);
 });
 
+
 server.on('connection', function (socket) {
-    let store = createStore(mapActions)
+    let store = redux.createStore(mapActions);
 
-    var state = 'initial';
+    // store.subscribe(() => console.log(store.getState()))
 
-    console.log('A new connection has been established.');
+    console.log('new connection');
 
-    // Now that a TCP connection has been established, the server can send data to
-    // the client by writing to its socket.
-    socket.write('SEND_PASSPHRASE');
-
-    // The server can also receive data from the client by reading from its socket.
     socket.on('data', function (chunk) {
-        let msg = chunk.toString();
+        let msg = chunk.toString().trim();
         let address = socket.address()['address'];
-        // console.log(msg);
-        // console.log(address)
-        switch(store.state) {
+
+        console.log(msg);
+        console.log('state: ' + store.getState())
+
+        switch (store.getState()) {
             case States.initial:
-                store.dispatch({ type: ActionTypes.initialConnection});
+                console.log('here1')
+                store.dispatch({ type: ActionTypes.initialConnection });
+                break;
             case States.waitPass:
-                store.dispatch({ type: ActionTypes.recievedPass , data: msg});
-            case States.accepted:
+                console.log(`recieved passphrase ${msg}`)
+                store.dispatch({ type: ActionTypes.recievedPass, data: msg });
+                break;
+            case States.connected:
+                switch(msg) {
+                    case 'VOL_UP':
+                        shell.exec('amixer -q sset Master 8%+');
+                        break;
+                    case 'VOL_DOWN':
+                        shell.exec('amixer -q sset Master 8%-');
+                        break;
+                }
                 console.log("accepted");
-        }
-
-        if(store.state == States.waitPass) {
-        }
-
+                break;
+        }    
     });
 
-    // When the client requests to end the TCP connection with the server, the server
-    // ends the connection.
     socket.on('end', function () {
         console.log('Closing connection with the client');
     });
 
-    // Don't forget to catch error, for your own sake.
     socket.on('error', function (err) {
         console.log(`Error: ${err}`);
     });
 });
 
 
-function mapActions(state = States.initial , action) {
+function mapActions(state = States.initial, action) {
     switch (action.type) {
         case ActionTypes.recievedPass:
-            if(action.data == '1234') {
-                return States.accepted;
+            if (action.data == passphrase) {
+                console.log("connected");
+                return States.connected;
             }
+            break;
         case ActionTypes.initialConnection:
-            // check the info for being on the same network
             return States.waitPass;
         default:
-            return state
+            return state;
     }
 }
 
 const States = {
     initial: 1,
     waitPass: 2,
-    accepted: 3,
- };
+    connected: 3,
+};
 
- const ActionTypes = {
+const ActionTypes = {
     recievedPass: 11,
     initialConnection: 22,
-    // waitPass: 2,
-    // connected: 3,
- };
+};
