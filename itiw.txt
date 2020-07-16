@@ -1,0 +1,4 @@
+a server that waits for someone to try to connect
+if had the passphrase (sending it without any kind of encryption) 
+
+wait for futhure commands

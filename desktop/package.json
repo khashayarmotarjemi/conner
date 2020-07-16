@@ -1,0 +1,11 @@
+{
+  "name": "conner-desktop",
+  "version": "1.0.0",
+  "description": "Desktop side of a mobile to desktop connection system.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "khashayarmotarjemi",
+  "license": "GPL-3.0-or-later"
+}
