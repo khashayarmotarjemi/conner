@@ -1,45 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
-
+import 'package:conner_mobile/bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:multicast_dns/multicast_dns.dart';
-import 'package:ping_discover_network/ping_discover_network.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:wifi/wifi.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() async {
   runApp(MyApp());
-
-  final int port = 8991;
-
-  print('waiting foo');
-
-  Socket socket = await Socket.connect('192.168.43.190', port);
-  print('connected');
-
-  socket.listen((List<int> event) {
-    print(utf8.decode(event));
-  });
-
-  socket.add(utf8.encode('hello'));
-
-  await Future.delayed(Duration(seconds: 5));
-  socket.add(utf8.encode('1234'));
-
-//  socket.close();
-
-
-
-/*
-  final String ip = await Wifi.ip;
-  final String subnet = ip.substring(0, ip.lastIndexOf('.'));
-  print("subnet: $subnet");*/
-//  final stream = NetworkAnalyzer.discover(subnet, port,timeout: Duration(microseconds: 100));
-//  stream.listen((NetworkAddress addr) {
-//    if (addr.exists) {
-//    }
-//  });
-
 }
 
 class MyApp extends StatelessWidget {
@@ -51,7 +15,81 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: Text('a'),
+      home: MainPage(),
+    );
+  }
+}
+
+class MainPage extends StatefulWidget {
+  @override
+  _MainPageState createState() => _MainPageState();
+}
+
+class _MainPageState extends State<MainPage> {
+  SocketBloc _bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_bloc == null) {
+      _bloc = SocketBloc();
+      _bloc.add(Connect());
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('conner-mobile'),
+      ),
+      body: Container(
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        child: BlocBuilder<SocketBloc, SocketState>(
+          bloc: _bloc,
+          builder: (context, state) {
+            if (state is SearchingNetwork) {
+              return Text('searching network');
+            } else if (state is Connecting) {
+              return Text('connecting to ${state.to}');
+            } else if (state is Connected) {
+              return SendingWidget(onSend: (msg) {
+                _bloc.add(SendMessage(msg));
+              });
+            } else if (state is Failed) {
+              return Text('failed: ${state.reason}');
+            } else {
+              return Text('disconected');
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class SendingWidget extends StatefulWidget {
+  final Function(String) onSend;
+
+  const SendingWidget({Key key, this.onSend}) : super(key: key);
+
+  @override
+  _SendingWidgetState createState() => _SendingWidgetState();
+}
+
+class _SendingWidgetState extends State<SendingWidget> {
+  final msgController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        TextFormField(
+          controller: msgController,
+        ),
+        RaisedButton(
+          child: Text('send'),
+          onPressed: () {
+            widget.onSend(msgController.text);
+          },
+        )
+      ],
     );
   }
 }
